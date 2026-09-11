@@ -23,7 +23,7 @@ def test_filter_request_shape_and_bounds():
         "rentalStatus": "ACTIVE",
         "areas": [100],
         "price": {"lowerBound": 2000, "upperBound": 3500},
-        "bedrooms": {"minimum": 0, "maximum": 1},
+        "bedrooms": {"lowerBound": 0, "upperBound": 1},
     }
     with pytest.raises(ValueError):
         build_search_request(filters, per_page=501)

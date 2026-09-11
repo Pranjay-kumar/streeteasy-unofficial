@@ -21,3 +21,8 @@ jobs:
       - run: pytest -q
       - run: python -m build
       - run: twine check dist/*
+      - name: Verify wheel installation
+        run: |
+          python -m venv wheel-test
+          wheel-test/bin/python -m pip install dist/*.whl
+          wheel-test/bin/streeteasy --version

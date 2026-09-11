@@ -2,6 +2,11 @@
 dist/
 release-dist/
 release-dist-next/
+dist-0.2/
+dist-0.2-final/
+wheel-test/
+.streeteasy-browser/
+.streeteasy-state.json
 build/
 *.egg-info/
 __pycache__/

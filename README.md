@@ -1,38 +1,65 @@
 # StreetEasy Unofficial
 
-Typed, transport-agnostic Python helpers for StreetEasy's web GraphQL rental search.
+A typed Python SDK for searching, enriching, and monitoring StreetEasy rentals locally.
 
 ```bash
 pip install "streeteasy-unofficial[browser]"
 ```
 
 ```python
-from streeteasy_unofficial import AsyncClient, HeadfulBrowserTransport, SearchFilters
+from streeteasy_unofficial import SearchFilters, StreetEasy
 
-async with HeadfulBrowserTransport(
-    start_url="https://streeteasy.com/for-rent/astoria/price:-3500",
-) as browser:
-    client = AsyncClient(browser)
-    page = await client.search_rentals(
-        SearchFilters(max_price=3500, bedrooms=(0, 1)),
-        per_page=100,
-    )
-    for listing in page.listings:
-        print(listing.price, listing.area_name, listing.url)
+client = StreetEasy()
+filters = SearchFilters(
+    neighborhoods=("Astoria", "Sunnyside"),
+    max_price=3000,
+    bedrooms=(1,),
+)
 
-    details = await client.rental_details(page.listings[0].id)
-    print(details.description, details.amenities, details.transit)
+for listing in client.search_all(filters, max_results=50):
+    print(listing.price, listing.area_name, listing.url)
+```
+
+## Monitor a search
+
+```python
+from streeteasy_unofficial import ConsoleNotifier, JsonFileStore
+
+watch = client.watch(
+    filters=filters,
+    interval="2h",
+    store=JsonFileStore("apartments.json"),
+    notifier=ConsoleNotifier(),
+)
+watch.run()
+```
+
+Monitoring emits typed events for new, changed, removed, and returned listings.
+Checkpoints are saved only after every requested search page succeeds.
+
+## CLI
+
+```bash
+streeteasy areas astoria
+streeteasy search --neighborhood Astoria --max-price 3000 --bedrooms 1
+streeteasy enrich LISTING_ID
+streeteasy watch --config examples/watch.toml
+streeteasy doctor
 ```
 
 ## What it provides
 
 - Typed search filters and result models.
+- Friendly neighborhood names backed by a versioned area catalog.
+- Automatic cross-page pagination and deduplication.
+- Synchronous and asynchronous clients.
+- Typed monitoring events with caller-selected persistence and notification adapters.
 - GraphQL request construction for the observed `GetListingRental` operation.
 - Rental response parsing, bathroom normalization, and per-page deduplication.
 - Rental-detail enrichment for descriptions, media, amenities, price data,
   building metadata, nearby transit, and schools.
 - Bathroom, amenity, pet, and availability search filters.
-- An async client that accepts your transport instead of hiding network behavior.
+- Bounded-concurrency enrichment that retains per-listing failures.
 - An optional visible-Chrome transport. It never runs headless.
 - Desktop notification, foreground Chrome, and automatic continuation when human verification appears.
 - No required runtime dependencies; browser support is an explicit extra.
@@ -80,3 +107,5 @@ waits for completion, and then resumes. Change the test inputs with
 ## License
 
 MIT
+
+See the [API reference](docs/api.md), [endpoint compatibility notes](docs/endpoint-discovery.md), [changelog](CHANGELOG.md), and [contribution guide](CONTRIBUTING.md).

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
 from typing import Any
@@ -9,14 +10,15 @@ from typing import Any
 class SearchFilters:
     """Filters observed in StreetEasy's public rental search request."""
 
-    area_ids: tuple[int, ...] = ()
+    area_ids: Sequence[int] = ()
+    neighborhoods: Sequence[str] = ()
     min_price: int | None = None
     max_price: int | None = None
-    bedrooms: tuple[float, ...] = ()
+    bedrooms: Sequence[float] = ()
     min_bathrooms: float | None = None
     max_bathrooms: float | None = None
-    amenities: tuple[str, ...] = ()
-    optional_amenities: tuple[str, ...] = ()
+    amenities: Sequence[str] = ()
+    optional_amenities: Sequence[str] = ()
     pets_allowed: bool | None = None
     available_after: str | None = None
     available_before: str | None = None
@@ -52,9 +54,12 @@ class SearchFilters:
             raise ValueError("min_bathrooms cannot exceed max_bathrooms")
 
     def to_graphql(self) -> dict[str, Any]:
+        from .areas import resolve_areas
+
         result: dict[str, Any] = {"rentalStatus": self.rental_status}
-        if self.area_ids:
-            result["areas"] = list(dict.fromkeys(self.area_ids))
+        area_ids = (*self.area_ids, *resolve_areas(self.neighborhoods))
+        if area_ids:
+            result["areas"] = list(dict.fromkeys(area_ids))
         if self.min_price is not None or self.max_price is not None:
             price: dict[str, int] = {}
             if self.min_price is not None:
@@ -65,8 +70,8 @@ class SearchFilters:
         if self.bedrooms:
             values = sorted(set(self.bedrooms))
             result["bedrooms"] = {
-                "minimum": values[0],
-                "maximum": values[-1],
+                "lowerBound": values[0],
+                "upperBound": values[-1],
             }
         if self.min_bathrooms is not None or self.max_bathrooms is not None:
             result["bathrooms"] = {
@@ -112,6 +117,10 @@ class Listing:
     has_tour3d: bool | None = None
     raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
+    @property
+    def photo_urls(self) -> tuple[str, ...]:
+        return tuple(media_url(key) for key in self.photo_keys)
+
 
 @dataclass(frozen=True, slots=True)
 class SearchPage:
@@ -143,3 +152,22 @@ class RentalDetails:
     transit: tuple[dict[str, Any], ...] = ()
     schools: tuple[dict[str, Any], ...] = ()
     raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+
+    @property
+    def photo_urls(self) -> tuple[str, ...]:
+        return tuple(media_url(key) for key in self.photo_keys)
+
+    @property
+    def floor_plan_urls(self) -> tuple[str, ...]:
+        return tuple(media_url(key) for key in self.floor_plan_keys)
+
+
+@dataclass(frozen=True, slots=True)
+class EnrichmentResult:
+    listing: Listing
+    details: RentalDetails | None = None
+    error: str | None = None
+
+
+def media_url(key: str, *, size: str = "se_large_800_400") -> str:
+    return f"https://photos.zillowstatic.com/fp/{key}-{size}.jpg"

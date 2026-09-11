@@ -2,6 +2,18 @@
 
 These notes document the small, reproducible probe used to define the public API.
 
+| Operation or route | Status | Package behavior |
+| --- | --- | --- |
+| `GetListingRental` / `searchRentals` | Verified in visible Chrome | Included |
+| `RentalListingDetailsFederated` | Externally reported and fixture-tested | Included |
+| `rentalByListingId` | Externally reported and fixture-tested | Included |
+| `buildingByRentalListingId` | Externally reported and fixture-tested | Included |
+| `getBuildingExpressByRentalListingId` | Externally reported and fixture-tested | Included |
+| Sale search/detail operations | Not reproducibly identified | Excluded |
+| `ShareToken` | Observed tracking mutation | Excluded |
+| `/hdp/monolith` | Observed analytics route | Excluded |
+| Rello and lead-generation calls | Externally reported | Excluded |
+
 ## Included operation
 
 StreetEasy's visible rental search currently sends `POST https://api-v6.streeteasy.com/` with the GraphQL operation `GetListingRental($input: SearchRentalsInput!)`. The observed input supports rental status, area IDs, price bounds, bedroom bounds, pagination, and sorting. The response supplies a total count and listing edges with the fields parsed by this package.
@@ -21,6 +33,8 @@ The current open-source [`evandcoleman/streeteasy-api`](https://github.com/evand
 This package implements the first three, which provide the useful public listing, building, transit, and school data. The Rello call is a lead-generation CTA and the final express call only reports showcase state, so neither is included.
 
 Online source comparison also exposed additional `SearchRentalsInput` filters: bathrooms, amenities, optional amenities, pets, and an availability date bound. These are now represented by `SearchFilters`.
+
+The bundled area catalog contains 322 numeric identifiers from the same public client source and records its snapshot date. Friendly lookup is case-insensitive and remains overridable through direct `area_ids`.
 
 ## Excluded traffic
 

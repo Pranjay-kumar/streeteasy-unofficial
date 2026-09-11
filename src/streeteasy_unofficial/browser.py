@@ -9,6 +9,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .errors import TransportError, VerificationTimeoutError
+
 Notice = Callable[[str, str], None]
 CHALLENGE_MARKERS = (
     "access to this page has been denied",
@@ -17,7 +19,7 @@ CHALLENGE_MARKERS = (
 )
 
 
-class BrowserTransportError(RuntimeError):
+class BrowserTransportError(TransportError):
     pass
 
 
@@ -141,7 +143,7 @@ class HeadfulBrowserTransport:
                     "Continuing the request.",
                 )
                 return
-        raise BrowserTransportError("Human verification timed out")
+        raise VerificationTimeoutError("Human verification timed out")
 
     async def __call__(self, endpoint: str, body: dict[str, Any]) -> dict[str, Any]:
         if not self._page:
@@ -160,8 +162,9 @@ class HeadfulBrowserTransport:
                 {"endpoint": endpoint, "body": body},
             )
             if result["status"] != 200:
+                detail = " ".join(result["text"].split())[:500]
                 raise BrowserTransportError(
-                    f"StreetEasy returned HTTP {result['status']}"
+                    f"StreetEasy returned HTTP {result['status']}: {detail}"
                 )
             try:
                 return json.loads(result["text"])

@@ -1,0 +1,15 @@
+[search]
+neighborhoods = ["Astoria", "Sunnyside"]
+max_price = 3000
+bedrooms = [1]
+
+[monitor]
+interval = "2h"
+state_file = ".streeteasy-state.json"
+search_key = "queens-one-bedroom"
+max_pages = 5
+max_results = 250
+
+[browser]
+start_url = "https://streeteasy.com/for-rent/astoria"
+profile_dir = ".streeteasy-browser"
