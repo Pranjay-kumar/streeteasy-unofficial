@@ -3,8 +3,14 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from .graphql import ENDPOINT, build_search_request, parse_search_response
-from .models import SearchFilters, SearchPage
+from .graphql import (
+    ENDPOINT,
+    build_rental_details_request,
+    build_search_request,
+    parse_rental_details_response,
+    parse_search_response,
+)
+from .models import RentalDetails, SearchFilters, SearchPage
 
 Transport = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -37,5 +43,16 @@ class AsyncClient:
             raise GraphQLResponseError(str(payload["errors"][0]))
         try:
             return parse_search_response(payload, page=page, per_page=per_page)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise GraphQLResponseError("Unexpected StreetEasy response shape") from exc
+
+    async def rental_details(self, listing_id: str | int) -> RentalDetails:
+        payload = await self._transport(
+            ENDPOINT, build_rental_details_request(listing_id)
+        )
+        if payload.get("errors"):
+            raise GraphQLResponseError(str(payload["errors"][0]))
+        try:
+            return parse_rental_details_response(payload)
         except (KeyError, TypeError, ValueError) as exc:
             raise GraphQLResponseError("Unexpected StreetEasy response shape") from exc

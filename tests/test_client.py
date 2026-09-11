@@ -29,6 +29,25 @@ def test_filter_request_shape_and_bounds():
         build_search_request(filters, per_page=501)
 
 
+def test_extended_search_filters():
+    filters = SearchFilters(
+        min_bathrooms=1,
+        max_bathrooms=2.5,
+        amenities=("DISHWASHER", "DISHWASHER", "GYM"),
+        optional_amenities=("DOORMAN",),
+        pets_allowed=True,
+        available_before="2026-10-01",
+    )
+    assert filters.to_graphql() == {
+        "rentalStatus": "ACTIVE",
+        "bathrooms": {"lowerBound": 1, "upperBound": 2.5},
+        "amenities": ["DISHWASHER", "GYM"],
+        "optionalAmenities": ["DOORMAN"],
+        "petsAllowed": True,
+        "available": {"startDate": None, "endDate": "2026-10-01"},
+    }
+
+
 def test_client_parses_and_deduplicates():
     payload = {
         "data": {
@@ -74,6 +93,50 @@ def test_graphql_errors_are_explicit():
 
     with pytest.raises(GraphQLResponseError, match="nope"):
         asyncio.run(AsyncClient(transport).search_rentals(SearchFilters()))
+
+
+def test_rental_details_parsing():
+    payload = {
+        "data": {
+            "rentalByListingId": {
+                "id": "123",
+                "status": "ACTIVE",
+                "description": "Bright corner apartment",
+                "buildingId": "456",
+                "pricing": {"price": 2995, "noFee": True},
+                "propertyDetails": {
+                    "address": {"street": "Example Street", "unit": "1"},
+                    "amenities": {"list": ["DISHWASHER"]},
+                    "features": {"list": ["HARDWOOD_FLOORS"]},
+                },
+                "media": {
+                    "photos": [{"key": "photo-key"}],
+                    "floorPlans": [{"key": "floor-key"}],
+                    "tour3dUrl": "https://example.test/tour",
+                },
+            },
+            "buildingByRentalListingId": {
+                "name": "Example Building",
+                "yearBuilt": 2020,
+                "nearby": {"transitStations": [{"name": "N/W"}]},
+            },
+            "getBuildingExpressByRentalListingId": {
+                "nearbySchools": [{"name": "P.S. Example"}]
+            },
+        }
+    }
+
+    async def transport(endpoint, body):
+        assert "RentalListingDetailsFederated" in body["query"]
+        assert body["variables"] == {"listingID": "123"}
+        return payload
+
+    details = asyncio.run(AsyncClient(transport).rental_details(123))
+    assert details.price == 2995
+    assert details.amenities == ("DISHWASHER",)
+    assert details.photo_keys == ("photo-key",)
+    assert details.building_name == "Example Building"
+    assert details.transit[0]["name"] == "N/W"
 
 
 def test_visible_transport_notifies_and_waits_for_a_person():

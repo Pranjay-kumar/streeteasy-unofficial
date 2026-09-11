@@ -13,6 +13,13 @@ class SearchFilters:
     min_price: int | None = None
     max_price: int | None = None
     bedrooms: tuple[float, ...] = ()
+    min_bathrooms: float | None = None
+    max_bathrooms: float | None = None
+    amenities: tuple[str, ...] = ()
+    optional_amenities: tuple[str, ...] = ()
+    pets_allowed: bool | None = None
+    available_after: str | None = None
+    available_before: str | None = None
     rental_status: str = "ACTIVE"
 
     def __post_init__(self) -> None:
@@ -33,6 +40,16 @@ class SearchFilters:
             raise ValueError(
                 "bedrooms must be a contiguous range because the source accepts minimum and maximum"
             )
+        if self.min_bathrooms is not None and self.min_bathrooms < 0:
+            raise ValueError("min_bathrooms cannot be negative")
+        if self.max_bathrooms is not None and self.max_bathrooms < 0:
+            raise ValueError("max_bathrooms cannot be negative")
+        if (
+            self.min_bathrooms is not None
+            and self.max_bathrooms is not None
+            and self.min_bathrooms > self.max_bathrooms
+        ):
+            raise ValueError("min_bathrooms cannot exceed max_bathrooms")
 
     def to_graphql(self) -> dict[str, Any]:
         result: dict[str, Any] = {"rentalStatus": self.rental_status}
@@ -51,6 +68,22 @@ class SearchFilters:
                 "minimum": values[0],
                 "maximum": values[-1],
             }
+        if self.min_bathrooms is not None or self.max_bathrooms is not None:
+            result["bathrooms"] = {
+                "lowerBound": self.min_bathrooms,
+                "upperBound": self.max_bathrooms,
+            }
+        if self.amenities:
+            result["amenities"] = list(dict.fromkeys(self.amenities))
+        if self.optional_amenities:
+            result["optionalAmenities"] = list(dict.fromkeys(self.optional_amenities))
+        if self.pets_allowed is not None:
+            result["petsAllowed"] = self.pets_allowed
+        if self.available_after or self.available_before:
+            result["available"] = {
+                "startDate": self.available_after,
+                "endDate": self.available_before,
+            }
         return result
 
 
@@ -68,6 +101,15 @@ class Listing:
     listed_by: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    available_at: str | None = None
+    living_area_size: int | None = None
+    no_fee: bool | None = None
+    net_effective_price: int | None = None
+    price_delta: int | None = None
+    price_changed_at: str | None = None
+    photo_keys: tuple[str, ...] = ()
+    has_videos: bool | None = None
+    has_tour3d: bool | None = None
     raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
 
 
@@ -77,3 +119,27 @@ class SearchPage:
     page: int
     per_page: int
     listings: tuple[Listing, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RentalDetails:
+    id: str
+    status: str | None = None
+    description: str | None = None
+    building_id: str | None = None
+    available_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    price: int | None = None
+    no_fee: bool | None = None
+    address: dict[str, Any] = field(default_factory=dict)
+    amenities: tuple[str, ...] = ()
+    features: tuple[str, ...] = ()
+    photo_keys: tuple[str, ...] = ()
+    floor_plan_keys: tuple[str, ...] = ()
+    tour3d_url: str | None = None
+    building_name: str | None = None
+    year_built: int | None = None
+    transit: tuple[dict[str, Any], ...] = ()
+    schools: tuple[dict[str, Any], ...] = ()
+    raw: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)

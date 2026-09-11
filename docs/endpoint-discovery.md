@@ -8,11 +8,26 @@ StreetEasy's visible rental search currently sends `POST https://api-v6.streetea
 
 The operation was observed from an ordinary visible Chrome session on a public rental search. A minimal headless probe received HTTP 403, while visible Chrome loaded the search and operation successfully. This is why the optional browser transport is explicitly headful.
 
+### Rental details
+
+The current open-source [`evandcoleman/streeteasy-api`](https://github.com/evandcoleman/streeteasy-api) project documents a second operation on the same GraphQL endpoint: `RentalListingDetailsFederated($listingID: ID!)`. Its query combines these read resolvers:
+
+- `rentalByListingId`
+- `buildingByRentalListingId`
+- `getBuildingExpressByRentalListingId`
+- `getRelloRentalById`
+- `getRentalListingExpressById`
+
+This package implements the first three, which provide the useful public listing, building, transit, and school data. The Rello call is a lead-generation CTA and the final express call only reports showcase state, so neither is included.
+
+Online source comparison also exposed additional `SearchRentalsInput` filters: bathrooms, amenities, optional amenities, pets, and an availability date bound. These are now represented by `SearchFilters`.
+
 ## Excluded traffic
 
 - `ShareToken` creates tracking/share tokens and is unrelated to listing retrieval.
 - `/hdp/monolith` is analytics traffic and is unrelated to listing retrieval.
 - Detail pages did not expose another stable, useful read operation during the probe.
+- No reproducible sale-search or sale-detail GraphQL operation was found in the reviewed public code.
 
 The package does not call those routes. It also does not include challenge solving, cookie extraction, fingerprint spoofing, account automation, or rate-limit bypass behavior.
 

@@ -1,6 +1,7 @@
 .venv/
 dist/
 release-dist/
+release-dist-next/
 build/
 *.egg-info/
 __pycache__/

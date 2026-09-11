@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from .models import Listing, SearchFilters, SearchPage
+from .models import Listing, RentalDetails, SearchFilters, SearchPage
 
 ENDPOINT = "https://api-v6.streeteasy.com/"
 MAX_PAGE_SIZE = 500
@@ -21,7 +21,36 @@ query GetListingRental($input: SearchRentalsInput!) {
 fragment ListingFields on SearchRentalListing {
   id areaName bedroomCount buildingType fullBathroomCount halfBathroomCount
   geoPoint { latitude longitude }
-  price sourceGroupLabel status street unit urlPath
+  availableAt livingAreaSize noFee netEffectivePrice price priceDelta priceChangedAt
+  photos { key } hasVideos hasTour3d sourceGroupLabel status street unit urlPath
+}
+"""
+
+RENTAL_DETAILS_QUERY = """
+query RentalListingDetailsFederated($listingID: ID!) {
+  rentalByListingId(id: $listingID) {
+    id status description buildingId availableAt createdAt updatedAt
+    pricing { price noFee leaseTermMonths monthsFree priceDelta priceChanges { changedAt } }
+    propertyDetails {
+      address { street houseNumber streetName city state zipCode unit }
+      roomCount bedroomCount fullBathroomCount halfBathroomCount livingAreaSize
+      amenities { list doormanTypes parkingTypes sharedOutdoorSpaceTypes storageSpaceTypes }
+      features { list fireplaceTypes privateOutdoorSpaceTypes views }
+    }
+    media { photos { key } floorPlans { key } videos { imageUrl id provider } tour3dUrl assetCount }
+    upcomingOpenHouses { id startTime endTime appointmentOnly }
+    propertyHistory { listingId sourceGroupLabel rentalEventsOfInterest { date price } }
+  }
+  buildingByRentalListingId(id: $listingID) {
+    id name type residentialUnitCount yearBuilt status
+    address { street city state zipCode }
+    area { name }
+    policies { list petPolicy { catsAllowed dogsAllowed maxDogWeight restrictedDogBreeds } }
+    nearby { transitStations { name distance routes geo { latitude longitude } } }
+  }
+  getBuildingExpressByRentalListingId(id: $listingID) {
+    nearbySchools { name district grades id idstr geoCenter { latitude longitude } }
+  }
 }
 """
 
@@ -87,6 +116,19 @@ def parse_search_response(
                 listed_by=node.get("sourceGroupLabel"),
                 latitude=point.get("latitude"),
                 longitude=point.get("longitude"),
+                available_at=node.get("availableAt"),
+                living_area_size=node.get("livingAreaSize"),
+                no_fee=node.get("noFee"),
+                net_effective_price=node.get("netEffectivePrice"),
+                price_delta=node.get("priceDelta"),
+                price_changed_at=node.get("priceChangedAt"),
+                photo_keys=tuple(
+                    photo["key"]
+                    for photo in node.get("photos") or ()
+                    if isinstance(photo, dict) and photo.get("key")
+                ),
+                has_videos=node.get("hasVideos"),
+                has_tour3d=node.get("hasTour3d"),
                 raw=dict(node),
             )
         )
@@ -95,4 +137,54 @@ def parse_search_response(
         page=page,
         per_page=per_page,
         listings=tuple(listings),
+    )
+
+
+def build_rental_details_request(listing_id: str | int) -> dict[str, Any]:
+    if not str(listing_id).strip():
+        raise ValueError("listing_id cannot be empty")
+    return {
+        "query": RENTAL_DETAILS_QUERY,
+        "variables": {"listingID": str(listing_id)},
+    }
+
+
+def parse_rental_details_response(payload: dict[str, Any]) -> RentalDetails:
+    data = payload["data"]
+    rental = data["rentalByListingId"]
+    if not rental:
+        raise ValueError("rental listing was not found")
+    pricing = rental.get("pricing") or {}
+    prop = rental.get("propertyDetails") or {}
+    media = rental.get("media") or {}
+    amenities = prop.get("amenities") or {}
+    features = prop.get("features") or {}
+    building = data.get("buildingByRentalListingId") or {}
+    nearby = building.get("nearby") or {}
+    express = data.get("getBuildingExpressByRentalListingId") or {}
+    return RentalDetails(
+        id=str(rental["id"]),
+        status=rental.get("status"),
+        description=rental.get("description"),
+        building_id=str(rental["buildingId"]) if rental.get("buildingId") else None,
+        available_at=rental.get("availableAt"),
+        created_at=rental.get("createdAt"),
+        updated_at=rental.get("updatedAt"),
+        price=pricing.get("price"),
+        no_fee=pricing.get("noFee"),
+        address=dict(prop.get("address") or {}),
+        amenities=tuple(amenities.get("list") or ()),
+        features=tuple(features.get("list") or ()),
+        photo_keys=tuple(
+            item["key"] for item in media.get("photos") or () if item.get("key")
+        ),
+        floor_plan_keys=tuple(
+            item["key"] for item in media.get("floorPlans") or () if item.get("key")
+        ),
+        tour3d_url=media.get("tour3dUrl"),
+        building_name=building.get("name"),
+        year_built=building.get("yearBuilt"),
+        transit=tuple(dict(item) for item in nearby.get("transitStations") or ()),
+        schools=tuple(dict(item) for item in express.get("nearbySchools") or ()),
+        raw=dict(data),
     )

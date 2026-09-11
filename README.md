@@ -19,6 +19,9 @@ async with HeadfulBrowserTransport(
     )
     for listing in page.listings:
         print(listing.price, listing.area_name, listing.url)
+
+    details = await client.rental_details(page.listings[0].id)
+    print(details.description, details.amenities, details.transit)
 ```
 
 ## What it provides
@@ -26,6 +29,9 @@ async with HeadfulBrowserTransport(
 - Typed search filters and result models.
 - GraphQL request construction for the observed `GetListingRental` operation.
 - Rental response parsing, bathroom normalization, and per-page deduplication.
+- Rental-detail enrichment for descriptions, media, amenities, price data,
+  building metadata, nearby transit, and schools.
+- Bathroom, amenity, pet, and availability search filters.
 - An async client that accepts your transport instead of hiding network behavior.
 - An optional visible-Chrome transport. It never runs headless.
 - Desktop notification, foreground Chrome, and automatic continuation when human verification appears.

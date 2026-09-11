@@ -2,7 +2,7 @@
 
 from .browser import BrowserTransportError, HeadfulBrowserTransport
 from .client import AsyncClient, GraphQLResponseError
-from .models import Listing, SearchFilters, SearchPage
+from .models import Listing, RentalDetails, SearchFilters, SearchPage
 
 __all__ = [
     "AsyncClient",
@@ -10,6 +10,7 @@ __all__ = [
     "GraphQLResponseError",
     "HeadfulBrowserTransport",
     "Listing",
+    "RentalDetails",
     "SearchFilters",
     "SearchPage",
 ]
