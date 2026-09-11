@@ -7,10 +7,9 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 Notice = Callable[[str, str], None]
-TransportT = TypeVar("TransportT", bound="HeadfulBrowserTransport")
 CHALLENGE_MARKERS = (
     "access to this page has been denied",
     "press & hold",
@@ -77,7 +76,7 @@ class HeadfulBrowserTransport:
         self._context = None
         self._page = None
 
-    async def __aenter__(self: TransportT) -> TransportT:
+    async def __aenter__(self) -> HeadfulBrowserTransport:  # noqa: PYI034
         try:
             from patchright.async_api import async_playwright
         except ImportError as exc:
