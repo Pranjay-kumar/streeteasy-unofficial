@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
 ]
+dependencies = ["tomli>=2; python_version < '3.11'"]
 
 [project.urls]
 Homepage = "https://github.com/Pranjay-kumar/streeteasy-unofficial"
