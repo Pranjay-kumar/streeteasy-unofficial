@@ -56,6 +56,27 @@ python -m build
 twine check dist/*
 ```
 
+## Test scripts
+
+Run the deterministic offline smoke test:
+
+```bash
+python scripts/offline_smoke.py
+```
+
+Run a small live Astoria search for one-bedroom rentals under $3,000, then
+enrich the first result:
+
+```bash
+pip install -e ".[browser]"
+python scripts/live_smoke.py
+```
+
+Chrome remains visible throughout the live test. If StreetEasy requests human
+verification, the script brings Chrome forward, sends a desktop notification,
+waits for completion, and then resumes. Change the test inputs with
+`--area-id`, `--max-price`, `--bedrooms`, `--per-page`, and `--start-url`.
+
 ## License
 
 MIT
